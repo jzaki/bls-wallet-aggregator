@@ -57,8 +57,7 @@ There are two options here:
 
 1. Set up SSL with a valid certificate
    ([guide](https://www.postgresql.org/docs/current/ssl-tcp.html)).
-2. Turn off SSL in postgres (only for development or if you can ensure the
-   connection isn't vulnerable to attack).
+2. Turn off SSL in postgres (only for development or if you are comfortable that SSL is not required for your setup).
    1. View the config location with
       `sudo -u postgres psql -c 'SHOW config_file'`.
    2. Turn off ssl in that config.
