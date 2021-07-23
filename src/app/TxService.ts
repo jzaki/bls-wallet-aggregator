@@ -14,7 +14,7 @@ export default class TxService {
   static defaultConfig = {
     txQueryLimit: env.TX_QUERY_LIMIT,
     maxFutureTxs: env.MAX_FUTURE_TXS,
-    maxAggregationSize: env.MAX_AGGREGATION_SIZE,
+    maxAggregationGasEstimate: env.MAX_AGGREGATION_GAS_ESTIMATE,
     maxAggregationDelayMillis: env.MAX_AGGREGATION_DELAY_MILLIS,
   };
 
@@ -35,19 +35,32 @@ export default class TxService {
       () => this.runBatch(),
     );
 
-    this.checkReadyTxCount();
+    this.checkReadyTxs();
   }
 
-  async checkReadyTxCount() {
-    const readyTxCount = await this.readyTxTable.count();
+  async checkReadyTxs() {
+    const priorityTxs = await this.readyTxTable.getHighestPriority(
+      this.config.txQueryLimit,
+    );
 
-    if (readyTxCount >= this.config.maxAggregationSize) {
-      this.batchTimer.trigger();
-    } else if (readyTxCount > 0) {
-      this.batchTimer.notifyTxWaiting();
-    } else {
+    if (priorityTxs.length === 0) {
       this.batchTimer.clear();
+      return;
     }
+
+    if (priorityTxs.length === this.config.txQueryLimit) {
+      this.batchTimer.trigger();
+      return;
+    }
+
+    const gasEstimate = await this.walletService.estimateGas(priorityTxs);
+
+    if (gasEstimate.gte(this.config.maxAggregationGasEstimate)) {
+      this.batchTimer.trigger();
+      return;
+    }
+
+    this.batchTimer.notifyTxWaiting();
   }
 
   runQueryGroup<T>(body: () => Promise<T>): Promise<T> {
@@ -77,7 +90,7 @@ export default class TxService {
       if (highestReadyNonce === txData.nonce) {
         this.readyTxTable.add(txData);
         await this.tryMoveFutureTxs(txData.pubKey, highestReadyNonce + 1);
-        this.checkReadyTxCount();
+        this.checkReadyTxs();
       } else {
         await this.ensureFutureTxSpace();
         this.futureTxTable.add(txData);
@@ -413,19 +426,25 @@ export default class TxService {
           insufficientRewardTxs.push(tx);
           gappedPubKeys.push(tx.pubKey);
         }
-
-        if (batchTxs.length >= this.config.maxAggregationSize) {
-          break;
-        }
       }
+
+      const txsToRemove = [...insufficientRewardTxs];
 
       if (batchTxs.length > 0) {
-        await this.walletService.sendTxs(batchTxs);
+        // TODO: What if a single transaction exceeds the gas limit? Will we get
+        // into a batch loop?
+
+        const { sentTxs } = await this.walletService.sendPartialTxs(
+          batchTxs,
+          ethers.BigNumber.from(this.config.maxAggregationGasEstimate),
+        );
+
+        txsToRemove.push(...sentTxs);
       }
 
-      await this.removeReadyTxs([...batchTxs, ...insufficientRewardTxs]);
+      await this.removeReadyTxs(txsToRemove);
 
-      this.checkReadyTxCount();
+      this.checkReadyTxs();
     });
   }
 
