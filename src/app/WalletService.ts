@@ -112,6 +112,57 @@ export default class WalletService {
     return await txResponse.wait();
   }
 
+  async estimateGas(txs: TransactionData[]): Promise<ethers.BigNumber> {
+    if (txs.length === 0) {
+      return ethers.BigNumber.from(0);
+    }
+
+    const txSignatures = txs.map((tx) => hubbleBls.mcl.loadG1(tx.signature));
+    const aggSignature = hubbleBls.signer.aggregate(txSignatures);
+
+    return await this.verificationGateway.estimateGas.blsCallMany(
+      this.aggregatorSigner.address,
+      aggSignature,
+      txs.map((tx) => ({
+        publicKeyHash: getKeyHash(tx.pubKey),
+        tokenRewardAmount: tx.tokenRewardAmount,
+        contractAddress: tx.contractAddress,
+        methodID: tx.methodId,
+        encodedParams: tx.encodedParams,
+      })),
+    );
+  }
+
+  async sendPartialTxs(
+    txs: TransactionData[],
+    gasEstimateLimit: ethers.BigNumber,
+  ): Promise<{
+    receipt: ethers.providers.TransactionReceipt;
+    sentTxs: TransactionData[];
+    remainingTxs: TransactionData[];
+  }> {
+    const txsToSend = [...txs];
+
+    while (true) {
+      const gasEstimate = await this.estimateGas(txsToSend);
+
+      if (gasEstimate.lte(gasEstimateLimit)) {
+        break;
+      }
+
+      txsToSend.pop();
+    }
+
+    const receipt = await this.sendTxs(txsToSend);
+    const sentTxs = txsToSend;
+
+    return {
+      receipt,
+      sentTxs,
+      remainingTxs: txs.filter((tx) => !sentTxs.includes(tx)),
+    };
+  }
+
   async sendTx(tx: TransactionData) {
     const txSignature = hubbleBls.mcl.loadG1(tx.signature);
 
