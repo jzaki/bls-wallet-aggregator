@@ -264,19 +264,12 @@ function fillGapToEnableMultipleFutureTxsTest(futureTxCount: number) {
       `(futureTxCount: ${futureTxCount})`,
     ].join(" "),
     async (fx) => {
-      const txService = await fx.createTxService({
+      const txService = await fx.createTxServiceWithoutBatching({
         ...TxService.defaultConfig,
         // Small query limit forces multiple batches when processing the
         // future txs, checking that batching works correctly
         txQueryLimit: 2,
       });
-
-      // Prevent batching to focus on testing which table txs land in
-      txService.batchTimer = new BatchTimer(
-        fx.clock,
-        TxService.defaultConfig.maxAggregationDelayMillis,
-        () => Promise.resolve(), // Empty batch callback
-      );
 
       const blsSigner = fx.createBlsSigner("other");
       const blsWallet = await fx.getOrCreateBlsWallet(blsSigner);
@@ -343,7 +336,7 @@ function fillGapToPickFromMultipleFutureTxsTest(futureTxCount: number) {
       `(futureTxCount: ${futureTxCount})`,
     ].join(" "),
     async (fx) => {
-      const txService = await fx.createTxService({
+      const txService = await fx.createTxServiceWithoutBatching({
         ...TxService.defaultConfig,
         // Small query limit forces multiple batches when processing the
         // future txs, checking that batching works correctly
@@ -485,16 +478,7 @@ Fixture.test(
     "their way to ready and don't get stuck in future",
   ].join(" "),
   async (fx) => {
-    const txService = await fx.createTxService({
-      ...TxService.defaultConfig,
-    });
-
-    // Prevent batching to focus on testing which table txs land in
-    txService.batchTimer = new BatchTimer(
-      fx.clock,
-      TxService.defaultConfig.maxAggregationDelayMillis,
-      () => Promise.resolve(), // Empty batch callback
-    );
+    const txService = await fx.createTxServiceWithoutBatching();
 
     const blsSigner = fx.createBlsSigner();
     const blsWallet = await fx.getOrCreateBlsWallet(blsSigner);

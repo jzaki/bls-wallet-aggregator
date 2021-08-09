@@ -11,6 +11,7 @@ import createQueryClient from "../../src/app/createQueryClient.ts";
 import Range from "./Range.ts";
 import Mutex from "../../src/helpers/Mutex.ts";
 import TestClock from "./TestClock.ts";
+import BatchTimer from "../../src/app/BatchTimer.ts";
 
 const DOMAIN_HEX = ethers.utils.keccak256("0xfeedbee5");
 const DOMAIN = ethers.utils.arrayify(DOMAIN_HEX);
@@ -193,6 +194,19 @@ export default class Fixture {
       this.walletService,
       config,
     );
+  }
+
+  async createTxServiceWithoutBatching(config = TxService.defaultConfig) {
+    const txService = await this.createTxService(config);
+
+    // Prevent batching to focus on testing which table txs land in
+    txService.batchTimer = new BatchTimer(
+      this.clock,
+      TxService.defaultConfig.maxAggregationDelayMillis,
+      () => Promise.resolve(), // Empty batch callback
+    );
+
+    return txService;
   }
 
   async allTxs(

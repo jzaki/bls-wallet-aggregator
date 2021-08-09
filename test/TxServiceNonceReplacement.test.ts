@@ -155,19 +155,12 @@ function reinsertionTest(extraTxs: number) {
       `(extraTxs: ${extraTxs})`,
     ].join(" "),
     async (fx) => {
-      const txService = await fx.createTxService({
+      const txService = await fx.createTxServiceWithoutBatching({
         ...TxService.defaultConfig,
         // Small query limit forces multiple batches when processing the
         // reinsertion, checking that batching works correctly
         txQueryLimit: 2,
       });
-
-      // Prevent batching to focus on testing which table txs land in
-      txService.batchTimer = new BatchTimer(
-        fx.clock,
-        TxService.defaultConfig.maxAggregationDelayMillis,
-        () => Promise.resolve(), // Empty batch callback
-      );
 
       const [w1, w2] = await fx.setupWallets(2);
 
