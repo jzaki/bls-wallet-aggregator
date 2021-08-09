@@ -112,7 +112,10 @@ export default class WalletService {
     return await txResponse.wait();
   }
 
-  async estimateGas(txs: TransactionData[]): Promise<ethers.BigNumber> {
+  async estimateGas(
+    txs: TransactionData[],
+    gasLimit: ethers.BigNumber,
+  ): Promise<ethers.BigNumber | "gas-limit-exceeded"> {
     if (txs.length === 0) {
       return ethers.BigNumber.from(0);
     }
@@ -120,17 +123,34 @@ export default class WalletService {
     const txSignatures = txs.map((tx) => hubbleBls.mcl.loadG1(tx.signature));
     const aggSignature = hubbleBls.signer.aggregate(txSignatures);
 
-    return await this.verificationGateway.estimateGas.blsCallMany(
-      this.aggregatorSigner.address,
-      aggSignature,
-      txs.map((tx) => ({
-        publicKeyHash: getKeyHash(tx.pubKey),
-        tokenRewardAmount: tx.tokenRewardAmount,
-        contractAddress: tx.contractAddress,
-        methodID: tx.methodId,
-        encodedParams: tx.encodedParams,
-      })),
-    );
+    try {
+      const estimate = await this.verificationGateway.estimateGas.blsCallMany(
+        this.aggregatorSigner.address,
+        aggSignature,
+        txs.map((tx) => ({
+          publicKeyHash: getKeyHash(tx.pubKey),
+          tokenRewardAmount: tx.tokenRewardAmount,
+          contractAddress: tx.contractAddress,
+          methodID: tx.methodId,
+          encodedParams: tx.encodedParams,
+        })),
+        { gasLimit },
+      );
+
+      if (estimate.gt(gasLimit)) {
+        // In case the allowance exceeded mechanism isn't reliable, make sure
+        // that an estimate over the limit returns this result.
+        return "gas-limit-exceeded";
+      }
+
+      return estimate;
+    } catch (error) {
+      if (error.message.includes("gas required exceeds allowance")) {
+        return "gas-limit-exceeded";
+      }
+
+      throw error;
+    }
   }
 
   async sendPartialTxs(
@@ -144,9 +164,9 @@ export default class WalletService {
     const txsToSend = [...txs];
 
     while (true) {
-      const gasEstimate = await this.estimateGas(txsToSend);
+      const gasEstimate = await this.estimateGas(txsToSend, gasEstimateLimit);
 
-      if (gasEstimate.lte(gasEstimateLimit)) {
+      if (gasEstimate !== "gas-limit-exceeded") {
         break;
       }
 

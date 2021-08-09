@@ -55,9 +55,12 @@ export default class TxService {
       return;
     }
 
-    const gasEstimate = await this.walletService.estimateGas(priorityTxs);
+    const gasEstimate = await this.walletService.estimateGas(
+      priorityTxs,
+      this.config.maxAggregationGasEstimate,
+    );
 
-    if (gasEstimate.gte(this.config.maxAggregationGasEstimate)) {
+    if (gasEstimate === "gas-limit-exceeded") {
       this.batchTimer.trigger();
       return;
     }
