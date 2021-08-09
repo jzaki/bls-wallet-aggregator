@@ -1,4 +1,5 @@
 import {
+  requireBigNumberEnv,
   requireBoolEnv,
   requireEnv,
   requireIntEnv,
@@ -40,7 +41,7 @@ export const TX_QUERY_LIMIT = requireIntEnv("TX_QUERY_LIMIT");
 
 export const MAX_FUTURE_TXS = requireIntEnv("MAX_FUTURE_TXS");
 
-export const MAX_AGGREGATION_GAS_ESTIMATE = requireIntEnv(
+export const MAX_AGGREGATION_GAS_ESTIMATE = requireBigNumberEnv(
   "MAX_AGGREGATION_GAS_ESTIMATE",
 );
 

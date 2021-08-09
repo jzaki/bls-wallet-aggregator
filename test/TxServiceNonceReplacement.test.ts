@@ -161,7 +161,7 @@ function reinsertionTest(extraTxs: number) {
         txQueryLimit: 2,
 
         // Prevent batching to focus on testing which table txs land in
-        maxAggregationSize: 100,
+        maxAggregationGasEstimate: ethers.BigNumber.from(10).pow(100),
       });
 
       const [w1, w2] = await fx.setupWallets(2);

@@ -270,7 +270,7 @@ function fillGapToEnableMultipleFutureTxsTest(futureTxCount: number) {
         txQueryLimit: 2,
 
         // Prevent batching to focus on testing which table txs land in
-        maxAggregationSize: 100,
+        maxAggregationGasEstimate: ethers.BigNumber.from(10).pow(100),
       });
 
       const blsSigner = fx.createBlsSigner("other");
@@ -484,7 +484,7 @@ Fixture.test(
       ...TxService.defaultConfig,
 
       // Prevent batching to focus on testing which table txs land in
-      maxAggregationSize: 100,
+      maxAggregationGasEstimate: ethers.BigNumber.from(10).pow(100),
     });
 
     const blsSigner = fx.createBlsSigner();

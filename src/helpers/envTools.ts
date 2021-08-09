@@ -1,4 +1,4 @@
-import { dotEnvConfig } from "../../deps/index.ts";
+import { dotEnvConfig, ethers } from "../../deps/index.ts";
 
 const dotEnv = dotEnvConfig();
 
@@ -33,6 +33,13 @@ export function requireIntEnv(envName: string): number {
   if (value !== Math.round(value)) {
     throw new Error(`Failed to parse ${envName} as int: ${strValue}`);
   }
+
+  return value;
+}
+
+export function requireBigNumberEnv(envName: string): ethers.BigNumber {
+  const strValue = requireEnv(envName);
+  const value = ethers.BigNumber.from(strValue);
 
   return value;
 }
