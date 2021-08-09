@@ -1,3 +1,4 @@
+import BatchTimer from "../src/app/BatchTimer.ts";
 import TxService from "../src/app/TxService.ts";
 import { assertEquals, ethers } from "./deps.ts";
 
@@ -268,10 +269,14 @@ function fillGapToEnableMultipleFutureTxsTest(futureTxCount: number) {
         // Small query limit forces multiple batches when processing the
         // future txs, checking that batching works correctly
         txQueryLimit: 2,
-
-        // Prevent batching to focus on testing which table txs land in
-        maxAggregationGasEstimate: ethers.BigNumber.from(10).pow(100),
       });
+
+      // Prevent batching to focus on testing which table txs land in
+      txService.batchTimer = new BatchTimer(
+        fx.clock,
+        TxService.defaultConfig.maxAggregationDelayMillis,
+        () => Promise.resolve(), // Empty batch callback
+      );
 
       const blsSigner = fx.createBlsSigner("other");
       const blsWallet = await fx.getOrCreateBlsWallet(blsSigner);
@@ -482,10 +487,14 @@ Fixture.test(
   async (fx) => {
     const txService = await fx.createTxService({
       ...TxService.defaultConfig,
-
-      // Prevent batching to focus on testing which table txs land in
-      maxAggregationGasEstimate: ethers.BigNumber.from(10).pow(100),
     });
+
+    // Prevent batching to focus on testing which table txs land in
+    txService.batchTimer = new BatchTimer(
+      fx.clock,
+      TxService.defaultConfig.maxAggregationDelayMillis,
+      () => Promise.resolve(), // Empty batch callback
+    );
 
     const blsSigner = fx.createBlsSigner();
     const blsWallet = await fx.getOrCreateBlsWallet(blsSigner);
