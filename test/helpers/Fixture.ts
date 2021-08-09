@@ -55,6 +55,7 @@ export default class Fixture {
     Deno.test({
       name,
       sanitizeOps: false,
+      sanitizeResources: false,
       fn: async () => {
         const fx = await Fixture.create(name);
 
