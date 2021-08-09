@@ -206,6 +206,7 @@ Fixture.test(
     const failures = await Promise.all(txs.map((tx) => txService.add(tx)));
     assertEquals(failures.flat(), []);
 
+    await txService.sideTasks.wait();
     await fx.clock.advance(txService.batchTimer.maxDelayMillis);
     await txService.batchTimer.waitForCompletedBatches(1);
 
