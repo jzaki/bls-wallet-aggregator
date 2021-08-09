@@ -7,6 +7,7 @@ import AddTransactionFailure from "./AddTransactionFailure.ts";
 import BatchTimer from "./BatchTimer.ts";
 import * as env from "./env.ts";
 import runQueryGroup from "./runQueryGroup.ts";
+import SideTasks from "./SideTasks.ts";
 import TxTable, { TransactionData } from "./TxTable.ts";
 import WalletService from "./WalletService.ts";
 
@@ -19,6 +20,7 @@ export default class TxService {
   };
 
   batchTimer: BatchTimer;
+  sideTasks = new SideTasks();
 
   constructor(
     public clock: IClock,
@@ -35,7 +37,7 @@ export default class TxService {
       () => this.runBatch(),
     );
 
-    this.checkReadyTxs();
+    this.sideTasks.add(this.checkReadyTxs());
   }
 
   async checkReadyTxs() {
@@ -90,7 +92,7 @@ export default class TxService {
       if (highestReadyNonce === txData.nonce) {
         this.readyTxTable.add(txData);
         await this.tryMoveFutureTxs(txData.pubKey, highestReadyNonce + 1);
-        this.checkReadyTxs();
+        this.sideTasks.add(this.checkReadyTxs());
       } else {
         await this.ensureFutureTxSpace();
         this.futureTxTable.add(txData);

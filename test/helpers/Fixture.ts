@@ -180,12 +180,7 @@ export default class Fixture {
     const futureTableName = `future_txs_test_${suffix}`;
     const futureTxTable = await TxTable.create(queryClient, futureTableName);
 
-    this.cleanupJobs.push(async () => {
-      await txTable.drop();
-      await queryClient.disconnect();
-    });
-
-    return new TxService(
+    const txService = new TxService(
       this.clock,
       queryClient,
       txTablesMutex,
@@ -194,6 +189,14 @@ export default class Fixture {
       this.walletService,
       config,
     );
+
+    this.cleanupJobs.push(async () => {
+      await txService.sideTasks.wait();
+      await txTable.drop();
+      await queryClient.disconnect();
+    });
+
+    return txService;
   }
 
   async createTxServiceWithoutBatching(config = TxService.defaultConfig) {

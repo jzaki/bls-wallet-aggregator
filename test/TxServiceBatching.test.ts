@@ -3,12 +3,12 @@ import { assertEquals, ethers } from "./deps.ts";
 import Fixture from "./helpers/Fixture.ts";
 import Range from "./helpers/Range.ts";
 
-const txServiceConfig = {
+const txServiceConfig: typeof TxService.defaultConfig = {
   ...TxService.defaultConfig,
 
   // These may be the defaults, but they're technically env dependent, so we
   // make sure we have these values because the tests assume them.
-  maxAggregationSize: 5,
+  maxAggregationGasEstimate: ethers.BigNumber.from(135_000_000_000_000n),
   maxAggregationDelayMillis: 5000,
 };
 
@@ -36,6 +36,9 @@ Fixture.test("submits a single transaction in a timed batch", async (fx) => {
     future: [],
   });
 
+  // Wait for side tasks to ensure the batch timer has had a chance to start
+  await txService.sideTasks.wait();
+
   fx.clock.advance(5000);
   await txService.batchTimer.waitForCompletedBatches(1);
 
@@ -55,7 +58,7 @@ Fixture.test("submits a full batch without delay", async (fx) => {
   const [{ blsSigner, blsWallet }] = await fx.setupWallets(1);
 
   const txs = await Promise.all(
-    Range(5).map((i) =>
+    Range(6).map((i) =>
       fx.createTxData({
         blsSigner,
         contract: fx.walletService.erc20,
@@ -120,6 +123,9 @@ Fixture.test(
       ],
       future: [],
     });
+
+    // Wait for side tasks to ensure the batch timer has had a chance to start
+    await txService.sideTasks.wait();
 
     await fx.clock.advance(5000);
     await txService.batchTimer.waitForCompletedBatches(2);
