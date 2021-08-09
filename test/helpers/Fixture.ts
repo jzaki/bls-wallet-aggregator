@@ -180,6 +180,15 @@ export default class Fixture {
     const futureTableName = `future_txs_test_${suffix}`;
     const futureTxTable = await TxTable.create(queryClient, futureTableName);
 
+    // Failing tests sometimes leave data in the tables. When specifying a seed,
+    // you can get the same table with leftover data.
+    //
+    // This isn't what we want, so we clear the tables.
+    await Promise.all([
+      txTable.clear(),
+      futureTxTable.clear(),
+    ]);
+
     const txService = new TxService(
       this.clock,
       queryClient,

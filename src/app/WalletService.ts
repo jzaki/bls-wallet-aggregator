@@ -10,6 +10,7 @@ import * as env from "./env.ts";
 import ovmContractABIs from "../../ovmContractABIs/index.ts";
 import type { TransactionData } from "./TxTable.ts";
 import AddTransactionFailure from "./AddTransactionFailure.ts";
+import asyncBinarySearchFindHighestTrue from "../helpers/asyncFirstTrueBinarySearch.ts";
 
 function getKeyHash(pubkey: string) {
   return ethers.utils.keccak256(ethers.utils.solidityPack(
@@ -161,17 +162,16 @@ export default class WalletService {
     sentTxs: TransactionData[];
     remainingTxs: TransactionData[];
   }> {
-    const txsToSend = [...txs];
+    const mostTxsWithinGasLimit = await asyncBinarySearchFindHighestTrue(
+      0,
+      txs.length,
+      async (i) => (
+        await this.estimateGas(txs.slice(0, i), gasEstimateLimit) !==
+          "gas-limit-exceeded"
+      ),
+    );
 
-    while (true) {
-      const gasEstimate = await this.estimateGas(txsToSend, gasEstimateLimit);
-
-      if (gasEstimate !== "gas-limit-exceeded") {
-        break;
-      }
-
-      txsToSend.pop();
-    }
+    const txsToSend = txs.slice(0, mostTxsWithinGasLimit);
 
     const receipt = await this.sendTxs(txsToSend);
     const sentTxs = txsToSend;

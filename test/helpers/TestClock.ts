@@ -12,6 +12,7 @@ export default class TestClock implements IClock {
   #time = TestClock.startTime;
 
   waitQueue: WaitEntry[] = [];
+  autoAdvance = false;
 
   now() {
     return this.#time;
@@ -19,11 +20,16 @@ export default class TestClock implements IClock {
 
   async wait(millis: number) {
     if (millis > 0) {
-      await new Promise<void>((resolve) => {
-        this.waitQueue.push({
-          resolve,
-          triggerTime: this.now() + millis,
+      const triggerTime = this.now() + millis;
+
+      if (this.autoAdvance) {
+        setTimeout(() => {
+          this.advance(triggerTime - this.now());
         });
+      }
+
+      await new Promise<void>((resolve) => {
+        this.waitQueue.push({ resolve, triggerTime });
       });
     }
   }

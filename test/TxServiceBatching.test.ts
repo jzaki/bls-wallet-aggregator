@@ -140,6 +140,8 @@ Fixture.test(
 Fixture.test(
   "submits 3 batches added concurrently in a jumbled order",
   async (fx) => {
+    fx.clock.autoAdvance = true;
+
     const txService = await fx.createTxService();
     const [{ blsSigner, blsWallet }] = await fx.setupWallets(1);
 
