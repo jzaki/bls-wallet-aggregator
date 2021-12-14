@@ -1,3 +1,5 @@
+# Consolidated into mono-repo, [bls-wallet](https://github.com/jzaki/bls-wallet/)
+
 # BLS Aggregator
 
 Aggregation service for bls-signed transaction data.
